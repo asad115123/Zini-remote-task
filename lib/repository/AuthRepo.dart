@@ -24,8 +24,10 @@ class AuthRepository {
     }
   }
 
-  Future<dynamic> SyncSmsAPI(dynamic data) async {
-    var headers = {'Content-Type': 'application/json'};
+  Future<dynamic> SyncSmsAPI(dynamic data,  ) async {
+    var headers = {
+      'Content-Type': 'application/json'
+    };
     try {
       dynamic response = await _apiServices.getPostApiresponse(APPURl.HomeScreen, data, headers);
       return response;

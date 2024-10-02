@@ -1,19 +1,24 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
- // Add the background service package
-
 import 'package:provider/provider.dart';
+import 'package:remotetask/HomeScreen2.dart';
+import 'package:remotetask/NOTIFICATIONSERVICES.dart';
+import 'package:remotetask/viewModel/Screens/ALL_Devices.dart';
+import 'package:remotetask/viewModel/Screens/GetALL mesgs.dart';
 import 'package:remotetask/viewModel/Screens/HomeScreen.dart';
 import 'package:remotetask/viewModel/Screens/LoginScreen.dart';
 import 'package:remotetask/viewModel/authviewModel.dart';
 import 'Models/Model1.dart';
+
+// Global keys
 final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>(); // Global navigatorKey
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Make sure Flutter binding is initialized
-  await initializeService();
-  // Initialize background service here
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initializeNotification();
+  await initializeService(); // Initialize the service
   runApp(const MyApp());
 }
 
@@ -26,10 +31,10 @@ Future<void> initializeService() async {
       onStart: onStart,
       autoStart: true,
       isForegroundMode: true,
-      notificationChannelId: 'com.example.remotetask', // Use a unique ID
+      notificationChannelId: 'com.example.remotetask',
       initialNotificationTitle: "Background Service Running",
       initialNotificationContent: "SMS syncing is running in the background",
-      foregroundServiceNotificationId: 888, // Unique notification ID
+      foregroundServiceNotificationId: 888,
     ),
     iosConfiguration: IosConfiguration(
       onForeground: onStart,
@@ -37,9 +42,10 @@ Future<void> initializeService() async {
     ),
   );
 
-  service.startService(); // Start the background service
+  await startServiceIfNeeded(service);
 }
 
+// Service start handler
 void onStart(ServiceInstance service) async {
   if (service is AndroidServiceInstance) {
     service.setForegroundNotificationInfo(
@@ -48,12 +54,13 @@ void onStart(ServiceInstance service) async {
     );
   }
 
-  print("Service started");
+  // Notify that the service has started
+  await NotificationService.showNotification(
+    title: "Service Started",
+    body: "Background service is running.",
+  );
 
-  // Listen for "startSyncing" event to trigger SMS syncing
   service.on('startSyncing').listen((event) async {
-    print("Received startSyncing event");
-
     SmsModel sms = SmsModel(
       message: "Test message now",
       from: "+1234567890",
@@ -61,12 +68,30 @@ void onStart(ServiceInstance service) async {
     );
 
     final authViewModel = AuthviewModel();
-    await authViewModel.attemptSyncSms(sms,);
+    await authViewModel.attemptSyncSms(sms);
   });
 
   service.on('stopSyncing').listen((event) {
     service.stopSelf();
   });
+}
+
+// Check if service is running and start it if not
+Future<void> startServiceIfNeeded(FlutterBackgroundService service) async {
+  bool isRunning = await service.isRunning();
+
+  if (!isRunning) {
+    await NotificationService.showNotification(
+      title: "Service",
+      body: "Starting service...",
+    );
+    await service.startService(); // Ensure this starts the service correctly
+  } else {
+    await NotificationService.showNotification(
+      title: "Service",
+      body: "The service is already running.",
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -81,12 +106,13 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Flutter Demo',
-         scaffoldMessengerKey: scaffoldMessengerKey,
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        navigatorKey: navigatorKey, // Assign global navigatorKey here
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
         ),
-        home:LOGINSCREEN(),
+        home: LOGINSCREEN(), // Initial screen
       ),
     );
   }

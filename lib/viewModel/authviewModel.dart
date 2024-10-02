@@ -1,11 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
 import 'package:remotetask/viewModel/Screens/HomeScreen.dart';
 import '../Models/Model1.dart';
+import '../NOTIFICATIONSERVICES.dart';
 import '../repository/AuthRepo.dart';
-import '../utils/utilss.dart';
 
 class AuthviewModel with ChangeNotifier {
   final _myRepo = AuthRepository();
@@ -35,102 +33,134 @@ class AuthviewModel with ChangeNotifier {
     setLoading(true);
     try {
       await _myRepo.LoginAPi(data);
-      Future.delayed(Duration(seconds: 3));
+      await NotificationService.showNotification(
+        title: "Login Success",
+        body: "You have successfully logged in.",
+      );
       Navigator.push(context, MaterialPageRoute(builder: (context) => Homescreen()));
     } catch (error) {
-      Utils.flushbarErrormesg1(error.toString(), context);
+      await NotificationService.showNotification(
+        title: "Login Failed",
+        body: "Error: $error",
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  // Initialize connectivity listener
   void _initializeConnectivityListener() {
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       if (result != ConnectivityResult.none) {
-        print("Internet connection restored");
+        NotificationService.showNotification(
+          title: "Internet Connected",
+          body: "You are now online.",
+        );
         _syncPendingMessages();
       } else {
-        print("Internet connection disconnected");
+        NotificationService.showNotification(
+          title: "Internet Disconnected",
+          body: "No internet connection.",
+        );
       }
     });
   }
 
-  /// Attempt to sync an SMS message
   Future<void> attemptSyncSms(SmsModel sms) async {
     setSyncing(true);
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult != ConnectivityResult.none) {
-        // If connected, sync immediately
         await syncSms(sms);
-        print("SMS synced successfully");
+        await NotificationService.showNotification(
+          title: "SMS Synced",
+          body: "SMS synced successfully.",
+        );
       } else {
-        // If offline, queue the message
-        print("No network, queuing message");
+        await NotificationService.showNotification(
+          title: "No Network",
+          body: "Message queued due to no internet.",
+        );
         pendingMessages.add(sms);
-       // Utils.flushbarErrormesg("No internet connection. SMS queued.");
       }
     } catch (error) {
-      print("Error syncing SMS: $error");
-    //  Utils.flushbarErrormesg("Error syncing SMS: $error");
+      await NotificationService.showNotification(
+        title: "Sync Failed",
+        body: "Error syncing SMS: $error",
+      );
     } finally {
       setSyncing(false);
     }
   }
 
-  /// Sync all pending messages
   Future<void> _syncPendingMessages() async {
     if (pendingMessages.isNotEmpty) {
-      print("Syncing pending messages");
-      for (var sms in List.from(pendingMessages)) { // Iterate over a copy to avoid mutation issues
+      for (var sms in List.from(pendingMessages)) {
         try {
           await syncSms(sms);
-          print("Pending SMS synced successfully");
+          await NotificationService.showNotification(
+            title: "Pending SMS Synced",
+            body: "SMS synced successfully.",
+          );
         } catch (error) {
-          print("Error syncing pending SMS: $error");
-         // Utils.flushbarErrormesg("Error syncing pending SMS: $error");
+          await NotificationService.showNotification(
+            title: "Sync Failed",
+            body: "Error syncing pending SMS: $error",
+          );
         }
       }
-      pendingMessages.clear();  // Clear the queue after syncing
+      pendingMessages.clear();
     }
   }
 
-  /// Actual SMS Sync API call
   Future<void> syncSms(SmsModel sms) async {
     try {
       await _myRepo.SyncSmsAPI(sms.toJson());
+      await NotificationService.showNotification(
+        title: "Sync Success",
+        body: "SMS synced successfully.",
+      );
     } catch (error) {
-      print("Sync Error: $error");
-    //  Utils.flushbarErrormesg("Sync Error: $error");
+      await NotificationService.showNotification(
+        title: "Sync Error",
+        body: "Sync failed: $error",
+      );
     }
   }
 
-  /// Get All Messages API
-  List<dynamic> messages = []; // Store list of messages
+
+
+  List messages=[];
   Future<void> AllMessageApi(BuildContext context) async {
     try {
-      var value = await _myRepo.ALlMESGS(); // Call the function without arguments
-      messages = value['data']; // Assuming the API returns a map with a 'data' key
+      var value = await _myRepo.ALlMESGS();
+      messages = value['data'];
       notifyListeners();
-      print(messages); // This should print the list of message objects
+      await NotificationService.showNotification(
+        title: "Messages Fetched",
+        body: "All messages fetched successfully.",
+      );
     } catch (error) {
-      print("Error fetching messages: $error");
-      Utils.flushbarErrormesg1("Error fetching messages: $error", context); // Handle error gracefully
+      await NotificationService.showNotification(
+        title: "Fetch Error",
+        body: "Error fetching messages: $error",
+      );
     }
   }
-
-  /// Get All Devices API
-  List<dynamic> devices = []; // Store list of devices
+  List devices=[];
   Future<void> ALLDeviceAPi(BuildContext context) async {
     try {
-      var value = await _myRepo.ALlDevices(); // Call the function without arguments
-      devices = value['data']; // Assuming the API returns a map with a 'data' key
+      var value = await _myRepo.ALlDevices();
+      devices = value['data'];
       notifyListeners();
-      print(devices); // This should print the list of device objects
+      await NotificationService.showNotification(
+        title: "Devices Fetched",
+        body: "All devices fetched successfully.",
+      );
     } catch (error) {
-      print("Error fetching devices: $error");
-      Utils.flushbarErrormesg1("Error fetching devices: $error", context); // Handle error gracefully
+      await NotificationService.showNotification(
+        title: "Fetch Error",
+        body: "Error fetching devices: $error",
+      );
     }
   }
 }
